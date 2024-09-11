@@ -6,6 +6,8 @@
 #define PATH_MAX 4096
 #define MAX_LENGTH 100
 
+int parseInput(char * input, char splitWords[][500], int maxWords);
+// --------------------------------------------------------------------------------------------------------------------------
 int main() {
     char cwd[PATH_MAX];
     char username[256];
@@ -32,12 +34,27 @@ int main() {
     }
 
     // get user input
-    if (fgets(input, sizeof(input), stdin) != NULL) {
+    if (fgets(input, sizeof(input), stdin)) {
         // Remove trailing newline if present
         size_t len = strlen(input);
         if (len > 0 && input[len-1] == '\n') {
             input[len-1] = '\0';
         }
+
+        char splitWords[MAX_LENGTH][500];
+
+        parseInput(input, splitWords, 10);
     }
 }
-
+// --------------------------------------------------------------------------------------------------------------------------
+int parseInput(char * input, char splitWords[][500], int maxWords) {
+    char *token = strtok(input, " ");
+    int counter = 0;
+    while (token && counter < maxWords) {
+        strcpy(splitWords[counter], token);
+        counter++;
+        token = strtok(NULL, " ");
+    }
+    return counter;
+}
+// --------------------------------------------------------------------------------------------------------------------------
