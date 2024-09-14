@@ -10,6 +10,8 @@ int  parseInput(char * input, char splitWords[][500], int maxWords);
 
 void changeDirectories(const char * path);
 
+int executeCommand(char * const* enteredCommand, const char* infile, const char* outfile);
+
 int is_whitespace(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v';
 }
@@ -19,6 +21,8 @@ int main() {
     char username[256];
     char input[MAX_LENGTH];
     char splitWords[MAX_LENGTH][500];
+
+    char infile, outfile;
 
     while(1) {
         // Get username
@@ -48,8 +52,50 @@ int main() {
 
         // Handle cd command
         if (wordCount > 0 && strcmp(splitWords[0], "cd") == 0) {
-
             changeDirectories(splitWords[1]);
+        }
+
+        else if (wordCount > 0 && strcmp(splitWords[0], "exit") == 0) {
+            break;
+        }
+
+        else {
+
+            for (int i = 0; i < wordCount; i++) {
+                if (*splitWords[i] == '>') {
+                    outfile = *splitWords[i+1];
+                }
+
+                else if (*splitWords[i] == '<')
+                {
+                    infile = *splitWords[i+1];
+                }
+            }
+            char** cArray;
+            cArray = (char**)malloc(wordCount * sizeof(char*)) + 1;
+
+            if (cArray == NULL) {
+                fprintf(stderr, "Memory allocation failed\n");
+                return 1;
+            }      
+
+            for (int i = 0; i < wordCount; i++) {
+                size_t len = strlen(splitWords[i]);
+                cArray[i] = (char*)malloc((len + 1) * sizeof(char));
+
+                if (cArray[i] == NULL) {
+                    fprintf(stderr, "Memory allocation failed\n");
+                }
+
+                for (int j = 0; j < i; j++) {
+                    free(cArray[j]);
+                }
+
+                free(cArray);
+                return 1;
+            }
+
+            executeCommand(cArray, const char *infile, const char *outfile);
         }
     }
 
@@ -99,9 +145,10 @@ int parseInput(char * input, char splitWords[][500], int maxWords) {
 
     return counter;
 }
-
 // --------------------------------------------------------------------------------------------------------------------------
+int executeCommand(char * const* enteredCommand, const char* infile, const char* outfile) {
 
+}
 // --------------------------------------------------------------------------------------------------------------------------
 void changeDirectories(const char* path) {
     if (chdir(path) != 0) {
