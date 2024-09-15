@@ -1,7 +1,11 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
 
 #define PATH_MAX 4096
 #define MAX_LENGTH 100
@@ -85,17 +89,18 @@ int main() {
 
                 if (cArray[i] == NULL) {
                     fprintf(stderr, "Memory allocation failed\n");
+
+                    for (int j = 0; j < i; j++) {
+                        free(cArray[j]);
+                    }
+
+                    free(cArray);
+                    return 1;
                 }
 
-                for (int j = 0; j < i; j++) {
-                    free(cArray[j]);
-                }
-
-                free(cArray);
-                return 1;
             }
 
-            executeCommand(cArray, const char *infile, const char *outfile);
+            executeCommand(cArray, &infile, &outfile);
         }
     }
 
@@ -147,8 +152,70 @@ int parseInput(char * input, char splitWords[][500], int maxWords) {
 }
 // --------------------------------------------------------------------------------------------------------------------------
 int executeCommand(char * const* enteredCommand, const char* infile, const char* outfile) {
+    pid_t pid;
+    int status;
 
+    pid = fork();
+    if (pid < 0) {
+        fprintf(stderr, "Fork failed: %s\n", strerror(errno));
+        return 1;
+    }
+    if (pid == 0) {
+        // CHILD PROCESS
+        if (infile != NULL && *infile != '\0') {
+            int fd = open(infile, O_RDONLY, 0666);
+            if (fd == -1) {
+                fprintf(stderr, "Failed to open input file: %s\n", strerror(errno));
+                _exit(1);
+            }
+            if (dup2(fd, STDIN_FILENO) == -1) {
+                fprintf(stderr, "Failed to redirect input: %s\n", strerror(errno));
+                _exit(1);
+            }
+            close(fd);
+        }
+
+        if (outfile != NULL && *outfile != '\0') {
+            int fd = open(outfile, O_WRONLY | O_CREAT | O_TRUNC, 0666);
+            if (fd == -1) {
+                fprintf(stderr, "Failed to open output file: %s\n", strerror(errno));
+                _exit(1);
+            }
+            if (dup2(fd, STDOUT_FILENO) == -1) {
+                fprintf(stderr, "Failed to redirect output: %s\n", strerror(errno));
+                _exit(1);
+            }
+            close(fd);
+        }
+
+        execvp(enteredCommand[0], enteredCommand);
+        
+        // If execvp returns, it means an error occurred
+        fprintf(stderr, "execvp failed: %s\n", strerror(errno));
+        _exit(1);
+    }
+    else {
+        // PARENT PROCESS
+        if (wait(&status) == -1) {
+            fprintf(stderr, "Wait failed: %s\n", strerror(errno));
+            return 1;
+        }
+
+        if (WIFEXITED(status)) {
+            int exit_status = WEXITSTATUS(status);
+            if (exit_status != 0) {
+                fprintf(stderr, "Child finished with error status: %d\n", exit_status);
+                return exit_status;
+            }
+        } else if (WIFSIGNALED(status)) {
+            fprintf(stderr, "Child terminated by signal: %d\n", WTERMSIG(status));
+            return 1;
+        }
+    }
+
+    return 0;  // Success
 }
+
 // --------------------------------------------------------------------------------------------------------------------------
 void changeDirectories(const char* path) {
     if (chdir(path) != 0) {
