@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200112L
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -56,11 +57,11 @@ int main() {
 
         // Handle cd command
         if (wordCount > 0 && strcmp(splitWords[0], "cd") == 0) {
-            changeDirectories(splitWords[1]);
-        }
-
-        else if (wordCount > 0 && strcmp(splitWords[0], "exit") == 0) {
-            break;
+            if (wordCount == 2) {
+                changeDirectories(splitWords[1]);
+            } else {
+                fprintf(stderr, "Path Not Formatted Correctly!\n");
+            }
         }
 
         else {
@@ -157,7 +158,7 @@ int executeCommand(char * const* enteredCommand, const char* infile, const char*
 
     pid = fork();
     if (pid < 0) {
-        fprintf(stderr, "Fork failed: %s\n", strerror(errno));
+        fprintf(stderr, "fork Failed: %s\n", strerror(errno));
         return 1;
     }
     if (pid == 0) {
@@ -191,7 +192,7 @@ int executeCommand(char * const* enteredCommand, const char* infile, const char*
         execvp(enteredCommand[0], enteredCommand);
         
         // If execvp returns, it means an error occurred
-        fprintf(stderr, "execvp failed: %s\n", strerror(errno));
+        fprintf(stderr, "exec Failed: %s\n", strerror(errno));
         _exit(1);
     }
     else {
@@ -215,11 +216,17 @@ int executeCommand(char * const* enteredCommand, const char* infile, const char*
 
     return 0;  // Success
 }
-
 // --------------------------------------------------------------------------------------------------------------------------
 void changeDirectories(const char* path) {
+    if (path == NULL || *path == '\0') {
+        fprintf(stderr, "Path Not Formatted Correctly!\n");
+        return;
+    }
+
     if (chdir(path) != 0) {
-        perror("chdir() error");
+        fprintf(stderr, "chdir Failed: %s\n", strerror(errno));
     }
 }
+// --------------------------------------------------------------------------------------------------------------------------
+
 // --------------------------------------------------------------------------------------------------------------------------
